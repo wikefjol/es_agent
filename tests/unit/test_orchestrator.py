@@ -71,6 +71,7 @@ class TestOrchestratorAgent:
         mock_tool.name = "search_publications"
         mock_tool.description = "Search for publications"
         registry.list_tools = Mock(return_value=[mock_tool])
+        registry.get_all_tools = Mock(return_value=[mock_tool])
         return registry
     
     @pytest.fixture

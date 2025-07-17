@@ -11,6 +11,7 @@ from src.core.orchestrator import OrchestratorAgent
 from src.core.executor import Executor
 from src.tools.registry import ToolRegistry
 from src.tools.mock_tools import create_mock_tools
+from src.tools.base import BaseTool
 from src.models.schemas import (
     ConversationContext,
     ExecutionContext,
@@ -95,8 +96,8 @@ class TestPerformanceAndConcurrency:
         sequential_time = time.time() - start_time
         
         # Both should succeed
-        assert parallel_result.success is True
-        assert sequential_result.success is True
+        assert parallel_result.metadata['success'] is True
+        assert sequential_result.metadata['success'] is True
         assert parallel_result.steps_completed == 5
         assert sequential_result.steps_completed == 5
         
@@ -133,7 +134,7 @@ class TestPerformanceAndConcurrency:
         start_time = time.time()
         
         tasks = [
-            performance_orchestrator.process_query(query, context)
+            performance_orchestrator.process_query(query, context.session_id)
             for query, context in zip(queries, contexts)
         ]
         
@@ -146,7 +147,7 @@ class TestPerformanceAndConcurrency:
         assert len(successful_results) == len(queries)
         
         for result in successful_results:
-            assert result.success is True
+            assert result.metadata['success'] is True
         
         # Log performance metrics
         print(f"Concurrent queries: {len(queries)}")
@@ -165,17 +166,17 @@ class TestPerformanceAndConcurrency:
         
         # First query (cache miss)
         start_time = time.time()
-        first_result = await performance_orchestrator.process_query(query, context)
+        first_result = await performance_orchestrator.process_query(query, context.session_id)
         first_time = time.time() - start_time
         
         # Second identical query (cache hit)
         start_time = time.time()
-        second_result = await performance_orchestrator.process_query(query, context)
+        second_result = await performance_orchestrator.process_query(query, context.session_id)
         second_time = time.time() - start_time
         
         # Both should succeed
-        assert first_result.success is True
-        assert second_result.success is True
+        assert first_result.metadata['success'] is True
+        assert second_result.metadata['success'] is True
         
         # Second query should be faster due to caching
         assert second_time < first_time * 0.5
@@ -220,7 +221,7 @@ class TestPerformanceAndConcurrency:
         execution_time = time.time() - start_time
         
         # Verify all tasks completed successfully
-        assert result.success is True
+        assert result.metadata['success'] is True
         assert result.steps_completed == num_tasks
         assert len(result.results) == num_tasks
         
@@ -251,8 +252,8 @@ class TestPerformanceAndConcurrency:
                 metadata={}
             )
             
-            result = await performance_orchestrator.process_query(query, context)
-            assert result.success is True
+            result = await performance_orchestrator.process_query(query, context.session_id)
+            assert result.metadata['success'] is True
         
         # Force garbage collection
         gc.collect()
@@ -315,7 +316,7 @@ class TestPerformanceAndConcurrency:
         assert execution_time < 5.0
         
         # Should have partial success
-        assert result.success is False  # Overall failure due to some failed steps
+        assert result.metadata['success'] is False  # Overall failure due to some failed steps
         assert result.steps_completed == 2  # Two successful steps
         assert len(result.errors) == 2  # Two failed steps
         
@@ -378,7 +379,7 @@ class TestPerformanceAndConcurrency:
             
             task = performance_orchestrator.process_query(
                 f"Query from session {i}",
-                context
+                context.session_id
             )
             session_tasks.append(task)
         
@@ -417,7 +418,7 @@ class TestPerformanceAndConcurrency:
         start_time = time.time()
         
         for i in range(100):
-            mock_tool = Mock()
+            mock_tool = Mock(spec=BaseTool)
             mock_tool.name = f"test_tool_{i}"
             mock_tool.description = f"Test tool {i}"
             
@@ -469,7 +470,7 @@ class TestPerformanceAndConcurrency:
             execution_times.append(execution_time)
             
             # Verify successful execution
-            assert result.success is True
+            assert result.metadata['success'] is True
             assert result.steps_completed == size
             
             print(f"Plan size {size}: {execution_time:.3f}s")

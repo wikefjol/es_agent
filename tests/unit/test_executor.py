@@ -110,9 +110,10 @@ class TestExecutor:
         assert "step1" in result.results
         step_result = result.results["step1"]
         assert step_result is not None
-        assert isinstance(step_result, dict)
-        assert "publications" in step_result
-        assert len(step_result["publications"]) > 0
+        assert isinstance(step_result, ToolResult)
+        assert step_result.success is True
+        assert "publications" in step_result.data
+        assert len(step_result.data["publications"]) > 0
 
     @pytest.mark.asyncio
     @pytest.mark.error_handling
@@ -252,7 +253,7 @@ class TestExecutor:
         # Results should contain actual data
         for step_id, step_result in result.results.items():
             assert step_result is not None
-            assert isinstance(step_result, dict)
+            assert isinstance(step_result, ToolResult)
 
     @pytest.mark.asyncio
     async def test_executor_stops_on_critical_failure(
@@ -331,10 +332,10 @@ class TestExecutor:
             assert step_id in result.results
             step_result = result.results[step_id]
             assert step_result is not None
-            assert isinstance(step_result, dict)
-            assert "publications" in step_result
-            assert isinstance(step_result["publications"], list)
-            assert len(step_result["publications"]) > 0
+            assert isinstance(step_result, ToolResult)
+            assert "publications" in step_result.data
+            assert isinstance(step_result.data["publications"], list)
+            assert len(step_result.data["publications"]) > 0
 
     @pytest.mark.asyncio
     async def test_executor_step_with_missing_tool(
@@ -403,7 +404,10 @@ class TestExecutor:
         assert "step1" in result.results
         assert "step2" in result.results
         assert result.results["step1"] is not None  # Has actual data
-        assert result.results["step2"] is None  # Was skipped
+        # step2 was skipped - should have ToolResult with None data and skipped=True metadata
+        assert result.results["step2"] is not None
+        assert result.results["step2"].data is None
+        assert result.results["step2"].metadata.get("skipped") is True
 
     @pytest.mark.asyncio
     async def test_executor_config_affects_behavior(

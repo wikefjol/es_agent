@@ -109,7 +109,7 @@ class Executor:
                             errors[step.id] = result.error or "Unknown error"
                     except asyncio.TimeoutError:
                         errors[step.id] = (
-                            f"Step timed out after {context.timeout_seconds} seconds"
+                            f"Step timeout after {context.timeout_seconds} seconds"
                         )
                     except Exception as e:
                         errors[step.id] = f"Unexpected error: {str(e)}"
@@ -134,7 +134,7 @@ class Executor:
                             errors[step.id] = result.error or "Unknown error"
                     except asyncio.TimeoutError:
                         errors[step.id] = (
-                            f"Step timed out after {context.timeout_seconds} seconds"
+                            f"Step timeout after {context.timeout_seconds} seconds"
                         )
                     except Exception as e:
                         errors[step.id] = f"Unexpected error: {str(e)}"
