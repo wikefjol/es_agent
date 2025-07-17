@@ -6,6 +6,7 @@ import uuid
 from typing import Dict, Any, List, Optional
 from src.core.planner import PlanningAgent
 from src.core.executor import Executor
+from src.core.context_manager import ContextManager
 from src.tools.registry import ToolRegistry
 from src.models.schemas import (
     AgentResponse,
@@ -23,6 +24,7 @@ class OrchestratorAgent:
         planner: Optional[PlanningAgent] = None,
         executor: Optional[Executor] = None,
         tool_registry: Optional[ToolRegistry] = None,
+        context_manager: Optional[ContextManager] = None,
         config: Optional[Any] = None,
     ):
         """Initialize the orchestrator agent.
@@ -31,11 +33,13 @@ class OrchestratorAgent:
             planner: Planning agent instance
             executor: Executor instance
             tool_registry: Tool registry instance
+            context_manager: Context manager instance
             config: Configuration object (optional)
         """
         self.planner = planner or PlanningAgent()
         self.executor = executor or Executor(ExecutorConfig())
         self.tool_registry = tool_registry or ToolRegistry()
+        self.context_manager = context_manager or ContextManager()
         self._conversation_contexts: Dict[str, ConversationContext] = {}
         
         # Query patterns that require tools
@@ -135,7 +139,17 @@ class OrchestratorAgent:
         Returns:
             True if relevant cached results exist
         """
-        # Simple keyword matching for now
+        # Use context manager to find relevant results
+        relevant_results = self.context_manager.find_relevant_results(
+            session_id=context.session_id,
+            query=query,
+            similarity_threshold=0.8
+        )
+        
+        if len(relevant_results) > 0:
+            return True
+        
+        # Fallback to old cached_results for backward compatibility
         query_words = set(query.lower().split())
         
         for cache_key, cached_result in context.cached_results.items():
@@ -169,11 +183,26 @@ class OrchestratorAgent:
         available_tools = self.tool_registry.get_all_tools()
         
         # Create execution plan
-        plan = self.planner.create_plan(
-            query=query,
-            available_tools=available_tools,
-            context=context.model_dump() if hasattr(context, 'model_dump') else None
-        )
+        try:
+            plan = self.planner.create_plan(
+                query=query,
+                available_tools=available_tools,
+                context=context.model_dump() if hasattr(context, 'model_dump') else None
+            )
+        except Exception as e:
+            # Handle planner errors gracefully
+            return AgentResponse(
+                response=f"I encountered an error while planning your request: {str(e)}",
+                sources=[],
+                execution_plan=None,
+                confidence=0.1,
+                session_id=session_id,
+                metadata={
+                    "success": False,
+                    "error_type": "planner_error",
+                    "error_message": str(e)
+                }
+            )
         
         # Create execution context
         exec_context = ExecutionContext(
@@ -192,8 +221,16 @@ class OrchestratorAgent:
             tool_registry=self.tool_registry
         )
         
-        # Cache results
-        cache_key = f"{session_id}_{uuid.uuid4().hex[:8]}"
+        # Cache results using context manager
+        cache_key = self.context_manager.store_result(
+            session_id=session_id,
+            tool_name="orchestrator_query",
+            parameters={"query": query},
+            result=result,
+            metadata={"timestamp": time.time()}
+        )
+        
+        # Also store in conversation context for backward compatibility
         context.cached_results[cache_key] = {
             "query": query,
             "result": result,
