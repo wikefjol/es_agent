@@ -521,13 +521,23 @@ Requirements:
 3. Implement similarity search
 4. Add session management
 
-### Phase 4: Real Tools and API (Week 4)
+### Phase 4: Real Tools and LLM Integration (Week 4)
 1. Implement Elasticsearch tools with tests
-2. Add web search tool
-3. Create API endpoints
-4. End-to-end testing
+2. Replace mock tools with production-ready async Elasticsearch tools
+3. Implement LLM Factory with LiteLLM integration
+4. Integrate real tools and LLM with existing orchestrator and planner
+5. End-to-end testing with real tools and LLM
 
-## Key Improvements to Make:
+### Phase 5: API and Production Infrastructure (Week 5)
+1. Create FastAPI application and REST endpoints
+2. Implement session management with Redis
+3. Add WebSocket support for real-time updates
+4. Add web search tool
+5. Production deployment infrastructure
+6. Health checks and monitoring
+7. Load testing and scalability validation
+
+## Key Improvements to Make (Phase 4 - Elasticsearch Tools):
 
 1. **All tools should be async**
 2. **Proper connection pooling for Elasticsearch**
@@ -538,7 +548,7 @@ Requirements:
 7. **Comprehensive input validation**
 8. **Parallel execution support**
 
-## Session Management
+## Session Management (Phase 5)
 **Purpose**: Handle browser refreshes and maintain state
 
 **Test Cases**:
@@ -556,7 +566,7 @@ Requirements:
 - Session timeout: 2 hours
 - Include WebSocket support for real-time updates
 
-## API Specifications
+## API Specifications (Phase 5)
 
 **Main Endpoint**:
 ```python

@@ -1,0 +1,294 @@
+{
+    "test_questions": {
+      "metadata": {
+        "database": "Chalmers Research Database",
+        "total_questions": 20,
+        "complexity_levels": 4,
+        "test_capabilities": [
+          "data_retrieval",
+          "aggregation",
+          "cross_referencing",
+          "external_integration",
+          "memory_utilization",
+          "async_operations",
+          "error_handling"
+        ]
+      },
+      "levels": {
+        "level_1_simple": {
+          "description": "Single operation, straightforward retrieval",
+          "questions": [
+            {
+              "id": "L1Q1",
+              "question": "Find publications about machine learning from 2024",
+              "required_capabilities": ["search_by_topic", "filter_by_date"],
+              "data_sources": ["publications"],
+              "expected_complexity": "single_call",
+              "follow_up_examples": [
+                "Show me the first 10 results",
+                "Which departments published these?"
+              ]
+            },
+            {
+              "id": "L1Q2",
+              "question": "List all organizations that contain 'Volvo' in their name",
+              "required_capabilities": ["text_search"],
+              "data_sources": ["organizations"],
+              "expected_complexity": "single_call",
+              "follow_up_examples": [
+                "Are any of these internal to Chalmers?",
+                "Show their ROR IDs"
+              ]
+            },
+            {
+              "id": "L1Q3",
+              "question": "How many publications mention 'sustainable energy' in their title?",
+              "required_capabilities": ["field_specific_search", "counting"],
+              "data_sources": ["publications"],
+              "expected_complexity": "single_call",
+              "follow_up_examples": [
+                "What about in the last 5 years?",
+                "Show me the most recent ones"
+              ]
+            },
+            {
+              "id": "L1Q4",
+              "question": "Find researchers with ORCID ID 0000-0002-1234-5678",
+              "required_capabilities": ["identifier_lookup"],
+              "data_sources": ["persons"],
+              "expected_complexity": "single_call",
+              "follow_up_examples": [
+                "What publications do they have?",
+                "Which department are they in?"
+              ]
+            },
+            {
+              "id": "L1Q5",
+              "question": "What scientific journals are available in the serials index?",
+              "required_capabilities": ["index_exploration"],
+              "data_sources": ["serials"],
+              "expected_complexity": "single_call",
+              "follow_up_examples": [
+                "Filter for open access journals",
+                "Which ones publish about physics?"
+              ]
+            }
+          ]
+        },
+        "level_2_intermediate": {
+          "description": "Multiple operations, some data correlation",
+          "questions": [
+            {
+              "id": "L2Q1",
+              "question": "Find all publications by researchers from the Department of Architecture and Civil Engineering in the last 3 years",
+              "required_capabilities": ["entity_relationship_traversal", "temporal_filtering"],
+              "data_sources": ["organizations", "persons", "publications"],
+              "expected_complexity": "multi_step",
+              "follow_up_examples": [
+                "Which researcher has the most publications?",
+                "Are there any Nature publications among these?"
+              ]
+            },
+            {
+              "id": "L2Q2",
+              "question": "Which Chalmers researchers have published about 'urban transport' and what are their ORCID IDs?",
+              "required_capabilities": ["topic_search", "author_extraction", "identifier_retrieval"],
+              "data_sources": ["publications", "persons"],
+              "expected_complexity": "multi_step",
+              "follow_up_examples": [
+                "Do any of them collaborate with KTH?",
+                "What are their h-indexes?"
+              ]
+            },
+            {
+              "id": "L2Q3",
+              "question": "Compare the number of publications about 'AI' versus 'renewable energy' from 2020-2024",
+              "required_capabilities": ["parallel_searches", "comparison", "aggregation"],
+              "data_sources": ["publications"],
+              "expected_complexity": "parallel_operations",
+              "follow_up_examples": [
+                "Show the yearly breakdown",
+                "Which topic has more international collaborations?"
+              ]
+            },
+            {
+              "id": "L2Q4",
+              "question": "Find external collaborating organizations on projects related to 'battery technology'",
+              "required_capabilities": ["topic_search", "relationship_extraction", "entity_classification"],
+              "data_sources": ["projects", "organizations"],
+              "expected_complexity": "multi_step",
+              "follow_up_examples": [
+                "Which countries are they from?",
+                "What's the total funding from these collaborations?"
+              ]
+            },
+            {
+              "id": "L2Q5",
+              "question": "List publications that have associated data files about climate research",
+              "required_capabilities": ["nested_field_search", "compound_filtering"],
+              "data_sources": ["publications"],
+              "expected_complexity": "single_call_complex_query",
+              "follow_up_examples": [
+                "What types of data files are these?",
+                "Can you access any of them?"
+              ]
+            }
+          ]
+        },
+        "level_3_advanced": {
+          "description": "Complex multi-step analysis, cross-referencing",
+          "questions": [
+            {
+              "id": "L3Q1",
+              "question": "Identify the top 5 most collaborative departments at Chalmers based on joint publications with external organizations",
+              "required_capabilities": ["relationship_analysis", "grouping", "ranking", "complex_aggregation"],
+              "data_sources": ["publications", "organizations", "persons"],
+              "expected_complexity": "complex_pipeline",
+              "follow_up_examples": [
+                "What are their main collaboration partners?",
+                "How has this changed over the past decade?"
+              ]
+            },
+            {
+              "id": "L3Q2",
+              "question": "Track the evolution of research topics in sustainable transportation by analyzing publication titles and abstracts from 2015-2024",
+              "required_capabilities": ["text_analysis", "temporal_trend_detection", "topic_modeling"],
+              "data_sources": ["publications"],
+              "expected_complexity": "analytical_pipeline",
+              "follow_up_examples": [
+                "What emerging subtopics can you identify?",
+                "Visualize this as a timeline"
+              ]
+            },
+            {
+              "id": "L3Q3",
+              "question": "Find research groups that have both EU-funded projects and publications in Nature or Science journals",
+              "required_capabilities": ["set_intersection", "complex_filtering", "entity_grouping"],
+              "data_sources": ["projects", "publications", "persons", "organizations"],
+              "expected_complexity": "complex_join",
+              "follow_up_examples": [
+                "What's their total EU funding?",
+                "List their Nature/Science papers"
+              ]
+            },
+            {
+              "id": "L3Q4",
+              "question": "Map the international collaboration network for Chalmers AI research using co-authorship data",
+              "required_capabilities": ["network_construction", "geo_mapping", "relationship_analysis"],
+              "data_sources": ["publications", "persons", "organizations"],
+              "expected_complexity": "graph_analysis",
+              "follow_up_examples": [
+                "Which country has the strongest connections?",
+                "Identify key bridge researchers"
+              ]
+            },
+            {
+              "id": "L3Q5",
+              "question": "Analyze the correlation between project funding amounts and subsequent publication output for energy research",
+              "required_capabilities": ["temporal_matching", "statistical_analysis", "causality_inference"],
+              "data_sources": ["projects", "publications"],
+              "expected_complexity": "statistical_pipeline",
+              "follow_up_examples": [
+                "What's the typical lag time?",
+                "Are there diminishing returns?"
+              ]
+            }
+          ]
+        },
+        "level_4_expert": {
+          "description": "Complex reasoning, external API integration, multi-source analysis",
+          "questions": [
+            {
+              "id": "L4Q1",
+              "question": "Create a citation impact analysis for Chalmers publications on quantum computing by cross-referencing with OpenAlex citation data",
+              "required_capabilities": ["external_api_integration", "data_enrichment", "impact_metrics"],
+              "data_sources": ["publications", "external:openalex"],
+              "expected_complexity": "hybrid_pipeline",
+              "follow_up_examples": [
+                "Compare with Swedish average",
+                "Which papers are most influential?"
+              ]
+            },
+            {
+              "id": "L4Q2",
+              "question": "Build a research profile for Professor [Name] including: publication trajectory, collaboration patterns, funding success rate, and comparison with international peers in the same field",
+              "required_capabilities": ["comprehensive_profiling", "multi_metric_analysis", "external_benchmarking"],
+              "data_sources": ["persons", "publications", "projects", "external:openalex"],
+              "expected_complexity": "multi_dimensional_analysis",
+              "follow_up_examples": [
+                "Suggest potential collaborators",
+                "Identify research gaps"
+              ]
+            },
+            {
+              "id": "L4Q3",
+              "question": "Identify emerging research areas at Chalmers by analyzing: new collaboration patterns, funding trends, publication keywords, and comparing with global research trends from OpenAlex",
+              "required_capabilities": ["pattern_detection", "predictive_analytics", "trend_validation"],
+              "data_sources": ["all_internal_indices", "external:openalex"],
+              "expected_complexity": "predictive_pipeline",
+              "follow_up_examples": [
+                "Which departments should invest in these areas?",
+                "What skills gaps exist?"
+              ]
+            },
+            {
+              "id": "L4Q4",
+              "question": "Generate a comprehensive report on Chalmers' contribution to UN Sustainable Development Goals by mapping publications, projects, and collaborations to specific SDGs",
+              "required_capabilities": ["semantic_classification", "multi_source_mapping", "report_generation"],
+              "data_sources": ["publications", "projects", "organizations"],
+              "expected_complexity": "classification_and_reporting",
+              "follow_up_examples": [
+                "Which SDGs are underrepresented?",
+                "Compare with other Swedish universities"
+              ]
+            },
+            {
+              "id": "L4Q5",
+              "question": "Perform a gap analysis to identify potential research collaboration opportunities by comparing Chalmers' research strengths with industry needs from major Swedish companies",
+              "required_capabilities": ["capability_assessment", "gap_analysis", "opportunity_scoring"],
+              "data_sources": ["all_internal_indices", "external:industry_data"],
+              "expected_complexity": "strategic_analysis",
+              "follow_up_examples": [
+                "Prioritize by potential impact",
+                "Suggest specific researcher-company matches"
+              ]
+            }
+          ]
+        }
+      },
+      "general_follow_up_patterns": [
+        {
+          "type": "refinement",
+          "examples": [
+            "Can you show me the top 10 results?",
+            "What about if we expand the timeframe to include 2019?",
+            "Filter these results by department X"
+          ]
+        },
+        {
+          "type": "visualization",
+          "examples": [
+            "Can you visualize this data?",
+            "Show me a trend graph",
+            "Create a network diagram"
+          ]
+        },
+        {
+          "type": "export",
+          "examples": [
+            "Export these results to a CSV file",
+            "Format this as a report",
+            "Create a summary table"
+          ]
+        },
+        {
+          "type": "comparison",
+          "examples": [
+            "How does this compare to KTH or Lund University?",
+            "What's the European average?",
+            "Show year-over-year changes"
+          ]
+        }
+      ]
+    }
+  }
