@@ -1,3 +1,4 @@
+# tests/conftest.py
 """Pytest configuration and fixtures."""
 
 import sys
@@ -10,6 +11,9 @@ sys.path.insert(0, str(project_root))
 
 # Import realistic test data fixtures
 from tests.fixtures.realistic_data import *
+
+# Import Elasticsearch fixtures
+from tests.fixtures.elasticsearch_fixtures import *
 
 # Add pytest markers for test categorization
 def pytest_configure(config):
@@ -32,3 +36,17 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "realistic_data: mark test as using realistic test data"
     )
+    config.addinivalue_line(
+        "markers", "elasticsearch: mark test as requiring Elasticsearch"
+    )
+
+# Additional test configuration for async tests
+import pytest
+import asyncio
+
+@pytest.fixture(scope="session")
+def event_loop():
+    """Create an instance of the default event loop for the test session."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
