@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 class ToolResult(BaseModel):
     """Result returned by tool execution."""
+
     success: bool
     data: Any
     error: Optional[str] = None
@@ -15,11 +16,11 @@ class ToolResult(BaseModel):
 
 class BaseTool(ABC):
     """Base class for all tools."""
-    
+
     def __init__(self, name: str, description: str):
         self.name = name
         self.description = description
-    
+
     @abstractmethod
     async def execute(self, **kwargs) -> ToolResult:
         """Execute the tool with given parameters."""
