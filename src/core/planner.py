@@ -222,6 +222,10 @@ class PlanningAgent:
             if re.search(pattern, query_lower):
                 analysis["statistics"] = True
                 break
+        
+        # Also check for explicit statistics keywords in complex queries
+        if any(keyword in query_lower for keyword in ["statistics", "stats", "field", "trends", "analysis"]):
+            analysis["statistics"] = True
 
         # Check for conditional logic
         for pattern in self._query_patterns["conditional"]:

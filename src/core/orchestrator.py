@@ -166,7 +166,7 @@ class OrchestratorAgent:
             AgentResponse with tool execution results
         """
         # Get available tools
-        available_tools = self.tool_registry.list_tools()
+        available_tools = self.tool_registry.get_all_tools()
         
         # Create execution plan
         plan = self.planner.create_plan(
@@ -299,7 +299,15 @@ class OrchestratorAgent:
                 if isinstance(step_result.data, list):
                     response_parts.append(f"Found {len(step_result.data)} results.")
                 elif isinstance(step_result.data, dict):
-                    response_parts.append(f"Retrieved information: {step_result.data}")
+                    # Handle structured data from tools
+                    if 'publications' in step_result.data:
+                        publications = step_result.data['publications']
+                        response_parts.append(f"Found {len(publications)} publications.")
+                    elif 'total_publications' in step_result.data:
+                        total = step_result.data['total_publications']
+                        response_parts.append(f"Found {total} total publications.")
+                    else:
+                        response_parts.append(f"Retrieved information: {step_result.data}")
                 else:
                     response_parts.append(f"Result: {step_result.data}")
         
@@ -319,7 +327,7 @@ class OrchestratorAgent:
             if hasattr(step_result, 'metadata') and step_result.metadata:
                 sources.append({
                     "step_id": step_id,
-                    "tool_name": step_result.metadata.get("tool_name", "unknown"),
+                    "tool_name": step_result.metadata.get("tool_name", step_result.metadata.get("tool", "unknown")),
                     "execution_time": step_result.metadata.get("execution_time", 0)
                 })
         return sources

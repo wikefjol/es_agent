@@ -99,11 +99,11 @@ class Executor:
                             task, timeout=context.timeout_seconds
                         )
                         if result.success:
-                            results[step.id] = result.data
+                            results[step.id] = result  # Store full ToolResult object
                             executed_steps.add(step.id)
                         elif result.metadata.get("skipped"):
                             # Step was skipped due to condition - count as success but don't include in results
-                            results[step.id] = result.data  # Will be None
+                            results[step.id] = result  # Store full ToolResult object
                             executed_steps.add(step.id)
                         else:
                             errors[step.id] = result.error or "Unknown error"
@@ -124,11 +124,11 @@ class Executor:
                             timeout=context.timeout_seconds,
                         )
                         if result.success:
-                            results[step.id] = result.data
+                            results[step.id] = result  # Store full ToolResult object
                             executed_steps.add(step.id)
                         elif result.metadata.get("skipped"):
                             # Step was skipped due to condition - count as success but don't include in results
-                            results[step.id] = result.data  # Will be None
+                            results[step.id] = result  # Store full ToolResult object
                             executed_steps.add(step.id)
                         else:
                             errors[step.id] = result.error or "Unknown error"
