@@ -309,3 +309,57 @@ class ContextManager:
             for cache_key in list(session.cached_results.keys()):
                 if cache_key not in self._cache:
                     del session.cached_results[cache_key]
+    
+    async def get_conversation_history(self, session_id: str) -> List[Dict[str, Any]]:
+        """Get conversation history for a session."""
+        if session_id not in self._sessions:
+            return []
+        
+        conversation_context = self._sessions[session_id]
+        return conversation_context.messages
+    
+    async def get_execution_plans(self, session_id: str) -> List[Dict[str, Any]]:
+        """Get execution plans for a session."""
+        if session_id not in self._sessions:
+            return []
+        
+        # For now, return empty list - can be extended to store execution plans
+        return []
+    
+    async def get_tool_calls(self, session_id: str) -> List[Dict[str, Any]]:
+        """Get tool calls for a session."""
+        if session_id not in self._sessions:
+            return []
+        
+        # For now, return empty list - can be extended to store tool calls
+        return []
+    
+    async def list_active_sessions(self) -> List[str]:
+        """List all active session IDs."""
+        return list(self._sessions.keys())
+    
+    async def clear_session(self, session_id: str) -> None:
+        """Clear a session and its data."""
+        if session_id in self._sessions:
+            del self._sessions[session_id]
+        
+        # Remove cached results for this session
+        keys_to_remove = [
+            key for key, cached_result in self._cache.items()
+            if cached_result.session_id == session_id
+        ]
+        for key in keys_to_remove:
+            del self._cache[key]
+    
+    async def get_session_summary(self, session_id: str) -> Dict[str, Any]:
+        """Get summary information for a session."""
+        if session_id not in self._sessions:
+            raise Exception(f"Session {session_id} not found")
+        
+        conversation_context = self._sessions[session_id]
+        return {
+            "queries": len([msg for msg in conversation_context.messages if msg.get("role") == "user"]),
+            "last_activity": conversation_context.last_updated.isoformat() if conversation_context.last_updated else None,
+            "tools_used": list(conversation_context.tools_used) if conversation_context.tools_used else [],
+            "cache_keys": conversation_context.cache_keys
+        }

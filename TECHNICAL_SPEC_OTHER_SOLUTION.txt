@@ -1,0 +1,116 @@
+⏺ Technical Specification: Research Agent Pipeline Architecture
+
+  1. Query Classification & Routing Layer
+
+  Entry Point: User query → HybridRouter (src/research_agent/core/hybrid_router.py:90-123)
+
+  Query Classification (QueryClassifier - src/research_agent/core/query_classifier.py):
+  - LLM Model: Claude Sonnet 3.7 (fast, cheap model)
+  - Classification Output: Structured Pydantic model QueryClassification:
+    - query_type: "conversational" | "research" | "mixed"
+    - confidence: 0.0-1.0 score
+    - reasoning: Explanation string
+    - needs_tools: Boolean flag
+    - escalate_if_needed: Boolean flag
+
+  Routing Decision (src/research_agent/core/hybrid_router.py:125-139):
+  - Fast path: query_type == "conversational" && confidence > 0.7 && !needs_tools
+  - Full workflow: All other cases (research queries)
+
+  2. Planning Architecture (Full Workflow)
+
+  Planner (src/research_agent/core/workflow.py:64-84):
+  - LLM Model: Claude Sonnet 4 (complex reasoning)
+  - Input: User query + system prompt with available tools
+  - Output: Structured Plan model with ordered steps
+  - Prompt Engineering: Includes tool descriptions and pagination guidelines
+
+  Available Tools (defined in prompt):
+  - search_publications: Full-text search with pagination
+  - search_by_author: Author-specific search with pagination
+  - get_field_statistics: Field distribution analysis
+  - get_publication_details: Detailed publication info
+  - get_database_summary: Database statistics
+
+  3. Execution Layer
+
+  Executor Agent (src/research_agent/core/workflow.py:135-171):
+  - Framework: LangGraph's create_react_agent (ReAct pattern)
+  - Execution Context: Current step + plan overview + past results
+  - Tool Binding: Direct access to Elasticsearch tools
+
+  Tool Implementation (src/research_agent/tools/elasticsearch_tools.py):
+  - Input Validation: Pydantic models for each tool
+    - SearchPublicationsInput: query, max_results, offset, fields
+    - SearchByAuthorInput: author_name, strategy, max_results, offset
+    - GetFieldStatisticsInput: field, size
+    - GetPublicationDetailsInput: publication_id
+  - Tool Formatting:
+    - All tools return JSON strings for consistent parsing
+    - Pagination info included in search results
+    - Error handling with structured error messages
+
+  4. State Management
+
+  Workflow State (PlanExecuteState):
+  - input: Original user query
+  - plan: List of execution steps
+  - past_steps: List of (step, result) tuples
+  - response: Final formatted response
+  - current_step: Execution progress tracker
+
+  State Transitions:
+  1. START → planner
+  2. planner → agent
+  3. agent → {replan, complete, END}
+  4. replan → {agent, END}
+  5. complete → END
+
+  5. Replanning Logic
+
+  Replanner (src/research_agent/core/workflow.py:94-132):
+  - LLM Model: Claude Sonnet 3.7 (faster model)
+  - Decision Logic: Returns either:
+    - Act with action_type: "response" → Final answer
+    - Act with action_type: "plan" → New plan steps
+
+  Completion Detection (src/research_agent/core/workflow.py:187-223):
+  - All plan steps completed
+  - Response contains answer indicators
+  - Response length > 200 chars without continuation phrases
+
+  6. Output Formatting
+
+  Response Formatting (src/research_agent/core/workflow.py:236-252):
+  - Short responses (< 50 chars): **Answer:** {response}
+  - Structured responses: Preserve original formatting
+  - Long responses: **Result:**\n\n{response}
+
+  Streaming Support (src/research_agent/core/hybrid_router.py:292-438):
+  - Event types: classification, plan, execution, replan, final, error
+  - Real-time updates with timestamps
+  - Graceful escalation from fast path to full workflow
+
+  7. Performance Optimization
+
+  Fast Path (ConversationalWorkflow):
+  - Direct LLM response without tool usage
+  - Memory buffer for conversation context
+  - Escalation detection for complex queries
+
+  Performance Tracking (src/research_agent/core/hybrid_router.py:48-54):
+  - Metrics: fast_path_count, full_workflow_count, escalation_count
+  - Average response times per workflow type
+  - Escalation rate calculation
+
+  8. Error Handling
+
+  Multiple Layers:
+  1. Tool-level: Try-catch with structured error messages
+  2. Workflow-level: Fallback to full workflow on fast path errors
+  3. Router-level: Comprehensive error responses with tracebacks
+
+  Fallback Mechanisms:
+  - LLM classification failure → Rule-based classification
+  - Fast path error → Full workflow execution
+  - Research agent not initialized → Error response

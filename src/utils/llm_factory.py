@@ -9,6 +9,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from langchain_litellm import ChatLiteLLM
 from langchain_core.callbacks import AsyncCallbackHandler
 from langchain_core.messages import BaseMessage
+from langchain_anthropic import ChatAnthropic
 
 
 class LLMError(Exception):
@@ -39,24 +40,49 @@ class LLMFactory:
     """Factory for creating configured LLM instances."""
 
     @staticmethod
-    def create_orchestrator_llm() -> ChatLiteLLM:
-        """Create LLM for the main orchestrator agent."""
+    def create_orchestrator_llm():
+        """Create LLM for the main orchestrator agent with fallback."""
+        # Try LiteLLM first
+        try:
+            return LLMFactory._create_litellm_orchestrator()
+        except Exception as e:
+            # Silently fall back to direct Anthropic
+            try:
+                return LLMFactory._create_anthropic_orchestrator()
+            except Exception as e2:
+                # If both fail, raise the Anthropic error
+                raise e2
+
+    @staticmethod
+    def _create_litellm_orchestrator() -> ChatLiteLLM:
+        """Create LiteLLM orchestrator."""
         api_key = os.getenv("LITELLM_API_KEY")
         api_base = os.getenv("LITELLM_BASE_URL")
 
-        if not api_key:
-            raise LLMValidationError("LITELLM_API_KEY environment variable is required")
-
-        if not api_base:
-            raise LLMValidationError(
-                "LITELLM_BASE_URL environment variable is required"
-            )
+        if not api_key or not api_base:
+            raise LLMValidationError("LiteLLM credentials not available")
 
         return ChatLiteLLM(
             model="anthropic/claude-3-sonnet-20240229",  # Fast model for orchestration
             api_key=api_key,
             api_base=api_base,
             temperature=0.3,  # Lower temperature for consistent routing
+            max_tokens=1024,
+            timeout=30,
+        )
+
+    @staticmethod
+    def _create_anthropic_orchestrator() -> ChatAnthropic:
+        """Create direct Anthropic orchestrator."""
+        api_key = os.getenv("ANTHROPIC_AUTH_TOKEN")
+        
+        if not api_key:
+            raise LLMValidationError("ANTHROPIC_AUTH_TOKEN environment variable is required")
+
+        return ChatAnthropic(
+            model="claude-3-5-sonnet-20241022",  # Updated model name
+            api_key=api_key,
+            temperature=0.3,
             max_tokens=1024,
             timeout=30,
         )
@@ -105,6 +131,54 @@ class LLMFactory:
             temperature=0.0,  # Deterministic for tool operations
             max_tokens=512,
             timeout=20,
+        )
+
+    @staticmethod
+    def create_result_formatter_llm():
+        """Create LLM for formatting search results with fallback."""
+        # Try LiteLLM first
+        try:
+            return LLMFactory._create_litellm_formatter()
+        except Exception as e:
+            # Silently fall back to direct Anthropic
+            try:
+                return LLMFactory._create_anthropic_formatter()
+            except Exception as e2:
+                # If both fail, raise the Anthropic error
+                raise e2
+
+    @staticmethod
+    def _create_litellm_formatter() -> ChatLiteLLM:
+        """Create LiteLLM formatter."""
+        api_key = os.getenv("LITELLM_API_KEY")
+        api_base = os.getenv("LITELLM_BASE_URL")
+
+        if not api_key or not api_base:
+            raise LLMValidationError("LiteLLM credentials not available")
+
+        return ChatLiteLLM(
+            model="anthropic/claude-3-haiku-20240307",  # Fast model for formatting
+            api_key=api_key,
+            api_base=api_base,
+            temperature=0.2,  # Some creativity for formatting
+            max_tokens=2048,
+            timeout=30,
+        )
+
+    @staticmethod
+    def _create_anthropic_formatter() -> ChatAnthropic:
+        """Create direct Anthropic formatter."""
+        api_key = os.getenv("ANTHROPIC_AUTH_TOKEN")
+        
+        if not api_key:
+            raise LLMValidationError("ANTHROPIC_AUTH_TOKEN environment variable is required")
+
+        return ChatAnthropic(
+            model="claude-3-5-haiku-20241022",  # Updated model name
+            api_key=api_key,
+            temperature=0.2,
+            max_tokens=2048,
+            timeout=30,
         )
 
     @staticmethod

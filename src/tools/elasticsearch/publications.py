@@ -87,20 +87,15 @@ class SearchPublicationsTool(ElasticsearchBaseTool):
                 }
             )
 
-        # Author search (nested query for Persons field)
+        # Author search (simple match for Persons field - not nested in this ES version)
         if params.author_name:
             must_clauses.append(
                 {
-                    "nested": {
-                        "path": "Persons",
-                        "query": {
-                            "match": {
-                                "Persons.PersonData.DisplayName": {
-                                    "query": params.author_name,
-                                    "operator": "and",
-                                }
-                            }
-                        },
+                    "match": {
+                        "Persons.PersonData.DisplayName": {
+                            "query": params.author_name,
+                            "operator": "and",
+                        }
                     }
                 }
             )

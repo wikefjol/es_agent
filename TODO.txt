@@ -1,0 +1,103 @@
+# TODO: Implement Proper LLM-based Tool Call Construction
+
+## Current Problem
+The system currently identifies when tools are needed but passes the raw user query to the tools, resulting in poor search results. For example:
+- "How many papers has Erik kristnansson published?" → Tool receives the entire question and searches for those words
+- "Find publications by John Smith" → Tool gets the full query instead of author_name="John Smith"
+
+## Root Cause (Discovered from es_workspace Analysis)
+Our current approach:
+```python
+# Planner creates steps with raw queries
+step = PlanStep(
+    tool_name="search_publications",
+    parameters={"query": "How many papers has Erik published?"}  # Wrong!
+)
+```
+
+The successful es_workspace approach:
+```python
+# ReAct agent interprets the task and constructs proper calls
+agent_executor.invoke({"messages": [("user", "Search for publications by Erik")]})
+# The LLM then decides: "I'll use search_by_author(author_name='Erik')"
+```
+
+## Solution: Adopt the ReAct Pattern for Tool Call Construction
+
+### Key Insight from es_workspace
+They use LangGraph's `create_react_agent` which allows the LLM to:
+1. Reason about which tool to use
+2. Construct proper parameters based on understanding
+3. Retry with different parameters if needed
+
+### Implementation Approach
+
+#### Option 1: Use ReAct Pattern in Executor (Like es_workspace)
+- Replace direct tool execution with a ReAct agent
+- Let the LLM see the task + available tools + schemas
+- LLM constructs the actual tool call with proper parameters
+
+#### Option 2: Enhanced Planner with Structured Tool Calls
+- Planner outputs structured tool calls, not just steps
+- Include tool schemas in planner prompt
+- Use Pydantic models to enforce proper parameter structure
+
+### Technical Details from es_workspace
+
+Their executor does this:
+```python
+task_formatted = f"""Original query: {original_query}
+Current plan: {plan_str}
+You are executing: {task}
+Use the available research publication tools to complete this step."""
+
+# ReAct agent then constructs proper tool calls
+agent_response = agent_executor.invoke({"messages": [("user", task_formatted)]})
+```
+
+The magic is that the LLM sees:
+- The high-level task
+- Available tools with descriptions
+- Can map "find Erik's papers" → search_by_author(author_name="Erik")
+
+### Concrete Examples of Proper Tool Call Construction
+
+User Query → LLM Understanding → Tool Call:
+- "How many papers has Erik kristnansson published?" 
+  → COUNT query for author Erik Kristnansson
+  → search_by_author(author_name="Erik Kristnansson") + count results
+
+- "Papers about machine learning from 2023"
+  → SEARCH query with topic and year filter
+  → search_publications(query="machine learning", year_filter=2023)
+
+- "Compare John Smith and Anna Dubois"
+  → Two separate AUTHOR searches
+  → search_by_author(author_name="John Smith") 
+  → search_by_author(author_name="Anna Dubois")
+
+### Implementation Steps
+
+1. **Add Tool Schemas to Prompts**
+   - Include parameter descriptions
+   - Show example tool calls
+   - Emphasize semantic mapping over query forwarding
+
+2. **Implement Structured Tool Call Generation**
+   - Create ToolCall model with tool_name and parameters
+   - Validate parameters match tool schemas
+   - Prevent raw queries in parameters
+
+3. **Consider ReAct Pattern**
+   - Evaluate using LangGraph's create_react_agent
+   - Would handle complex multi-step reasoning
+   - More flexible but potentially slower
+
+### Testing Strategy
+- Verify "How many papers has X published?" uses author search
+- Ensure topic queries use proper search parameters
+- Test that tools never receive raw user questions
+- Validate parameter extraction for complex queries
+
+## Priority: HIGH
+This is the #1 issue preventing accurate results. The fix will dramatically improve search relevance by ensuring tools receive proper parameters instead of raw queries.

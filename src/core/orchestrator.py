@@ -8,6 +8,7 @@ from src.core.planner import PlanningAgent
 from src.core.executor import Executor
 from src.core.context_manager import ContextManager
 from src.tools.registry import ToolRegistry
+from src.utils.result_formatter import ResultFormatter
 from src.models.schemas import (
     AgentResponse,
     ConversationContext,
@@ -40,25 +41,27 @@ class OrchestratorAgent:
         self.executor = executor or Executor(ExecutorConfig())
         self.tool_registry = tool_registry or ToolRegistry()
         self.context_manager = context_manager or ContextManager()
+        self.result_formatter = ResultFormatter()
         self._conversation_contexts: Dict[str, ConversationContext] = {}
 
         # Query patterns that require tools
         self._tool_requiring_patterns = [
             r"find\s+publications?",
             r"search\s+(for|about)",
-            r"show\s+me",
+            r"how\s+many\s+(papers?|publications?|articles?)",  # Count queries
+            r"(papers?|publications?|articles?)\s+(has|have)\s+.+\s+(published|written)",  # Author count
+            r"show\s+me\s+(publications|papers|research)",
             r"get\s+statistics",
             r"how\s+many",
             r"publications?\s+by",
             r"papers?\s+by",
-            r"research\s+on",
-            r"about\s+([A-Za-z\s]+)",
+            r"research\s+on\s+\w+",  # More specific: "research on topic"
             r"topics?\s+in",
             r"main\s+topics?",
             r"trends?\s+in",
         ]
 
-        # Simple conversational patterns
+        # Conversational patterns (expanded)
         self._conversational_patterns = [
             r"\b(hello|hi|hey)\b",
             r"\bhow\s+are\s+you\b",
@@ -66,14 +69,28 @@ class OrchestratorAgent:
             r"\bhelp\b",
             r"\b(thanks?|thank\s+you)\b",
             r"\b(goodbye|bye)\b",
+            r"what\s+do\s+you\s+think\s+about",
+            r"tell\s+me\s+about",
+            r"how\s+do\s+you\s+feel",
+            r"what\s+is\s+your\s+opinion",
+            r"do\s+you\s+like",
+            r"what\s+are\s+your\s+thoughts",
+            r"what\s+is\s+it\s+like",  # Philosophical questions
+            r"what\s+does\s+it\s+mean",
+            r"can\s+you\s+explain",
+            r"why\s+is",
+            r"how\s+does\s+.+\s+work",  # General knowledge
+            r"what\s+is\s+the\s+meaning",
+            r"is\s+it\s+true\s+that",
         ]
 
-    async def process_query(self, query: str, session_id: str) -> AgentResponse:
+    async def process_query(self, query: str, session_id: str, progress_callback: Optional[Any] = None) -> AgentResponse:
         """Process a user query and return a response.
 
         Args:
             query: User query string
             session_id: Session identifier
+            progress_callback: Optional callback for progress updates
 
         Returns:
             AgentResponse with response and metadata
@@ -114,8 +131,23 @@ class OrchestratorAgent:
             if re.search(pattern, query_lower):
                 return True
 
-        # Default to requiring tools for complex queries
-        return len(query.split()) > 3
+        # Default to conversational unless it's clearly a research query
+        # Check for research keywords
+        research_keywords = ["publication", "paper", "research", "study", "journal", "conference", "author", "citation", "article"]
+        has_research_keywords = any(keyword in query_lower for keyword in research_keywords)
+        
+        # If query has research keywords but is asking a general question, it's still conversational
+        general_question_patterns = [
+            r"what\s+is\s+a\s+(publication|paper|research|study)",
+            r"what\s+does\s+.+\s+mean",
+            r"can\s+you\s+explain",
+            r"tell\s+me\s+about\s+(publication|paper|research|study)",
+        ]
+        
+        is_general_question = any(re.search(pattern, query_lower) for pattern in general_question_patterns)
+        
+        # Require tools only if it has research keywords AND is not a general question
+        return has_research_keywords and not is_general_question
 
     def _has_relevant_cached_results(
         self, query: str, context: ConversationContext
@@ -169,7 +201,7 @@ class OrchestratorAgent:
 
         # Create execution plan
         try:
-            plan = self.planner.create_plan(
+            plan = await self.planner.create_plan(
                 query=query,
                 available_tools=available_tools,
                 context=(
@@ -222,8 +254,12 @@ class OrchestratorAgent:
             "timestamp": time.time(),
         }
 
-        # Format response
-        response_text = self._format_tool_response(result)
+        # Format response using LLM
+        try:
+            response_text = await self._format_tool_response_with_llm(query, result)
+        except Exception as e:
+            print(f"LLM formatting failed, using fallback: {e}")
+            response_text = self._format_tool_response(result)
 
         return AgentResponse(
             response=response_text,
@@ -242,7 +278,7 @@ class OrchestratorAgent:
     async def _handle_conversational_query(
         self, query: str, session_id: str, context: ConversationContext
     ) -> AgentResponse:
-        """Handle simple conversational queries.
+        """Handle conversational queries using LLM.
 
         Args:
             query: User query
@@ -250,32 +286,71 @@ class OrchestratorAgent:
             context: Conversation context
 
         Returns:
-            AgentResponse with conversational response
+            AgentResponse with LLM-generated conversational response
         """
-        query_lower = query.lower()
+        try:
+            # Use LLM to generate natural conversational response
+            from src.utils.llm_factory import LLMFactory
+            
+            llm = LLMFactory.create_orchestrator_llm()
+            
+            # Build conversation context for the LLM
+            conversation_history = ""
+            if context.messages:
+                # Include last few messages for context
+                recent_messages = context.messages[-4:]  # Last 4 messages
+                for msg in recent_messages:
+                    role = msg.get("role", "user")
+                    content = msg.get("content", "")
+                    conversation_history += f"{role}: {content}\n"
+            
+            # Create prompt for conversational response
+            prompt = f"""You are a helpful academic research assistant. You have access to a database of 356K academic publications and can search through them when needed.
 
-        # Simple response patterns
-        if re.search(r"hello|hi|hey", query_lower):
-            response = "Hello! I'm here to help you search for publications and research data. What would you like to find?"
-        elif re.search(r"what\s+can\s+you\s+do", query_lower):
-            response = "I can help you search for publications, find papers by specific authors, get research statistics, and analyze publication trends. Just ask me what you're looking for!"
-        elif re.search(r"help", query_lower):
-            response = "I can help you with:\n- Finding publications by author\n- Searching for papers on specific topics\n- Getting publication statistics\n- Analyzing research trends\n\nJust tell me what you're looking for!"
-        elif re.search(r"thanks?|thank\s+you", query_lower):
-            response = "You're welcome! Is there anything else I can help you with?"
-        elif re.search(r"goodbye|bye", query_lower):
-            response = "Goodbye! Feel free to come back anytime if you need help with research queries."
-        else:
-            response = "I'm here to help with research queries. Could you please specify what publications or research data you're looking for?"
+The user asked: "{query}"
 
-        return AgentResponse(
-            response=response,
-            sources=[],
-            execution_plan=None,
-            confidence=0.9,
-            session_id=session_id,
-            metadata={"type": "conversational"},
-        )
+{f"Recent conversation context:\n{conversation_history}" if conversation_history else ""}
+
+This is a conversational query that doesn't require searching through publications right now. 
+Respond naturally, helpfully, and conversationally. If appropriate, you can mention that you have access to academic publications and can search for specific research topics if they'd like.
+
+Keep your response friendly, engaging, and focused on being helpful. Don't be overly formal or robotic."""
+            
+            from langchain_core.messages import HumanMessage
+            response = await llm.ainvoke([HumanMessage(content=prompt)])
+            response = response.content
+            
+            return AgentResponse(
+                response=response,
+                sources=[],
+                execution_plan=None,
+                confidence=0.9,
+                session_id=session_id,
+                metadata={"type": "conversational"},
+            )
+            
+        except Exception as e:
+            # Better fallback responses based on query type
+            error_msg = str(e)
+            
+            # Provide more conversational fallback responses
+            if any(greeting in query.lower() for greeting in ["hi", "hello", "hey", "good morning", "good afternoon"]):
+                fallback_response = "Hello! I'm your academic research assistant. I can help you search through a database of over 350,000 academic publications. Try asking me something like 'Find papers about machine learning' or 'Show me research by specific authors'."
+            elif any(question in query.lower() for question in ["how are you", "what can you do", "help"]):
+                fallback_response = "I'm doing well, thank you! I'm designed to help with academic research. I can search for publications, analyze research trends, and answer questions about scholarly work. What would you like to explore?"
+            elif "thank" in query.lower():
+                fallback_response = "You're welcome! Feel free to ask me about any academic research topics you're interested in."
+            else:
+                fallback_response = "I'm here to help with your research needs! I can search through academic publications, find papers by specific authors, or help you explore research topics. What would you like to know about?"
+            
+            return AgentResponse(
+                response=fallback_response,
+                sources=[],
+                execution_plan=None,
+                confidence=0.7,
+                session_id=session_id,
+                metadata={"type": "conversational", "llm_error": error_msg, "fallback_used": True},
+            )
 
     def _get_or_create_context(self, session_id: str) -> ConversationContext:
         """Get or create conversation context for session.
@@ -295,6 +370,37 @@ class OrchestratorAgent:
                 metadata={},
             )
         return self._conversation_contexts[session_id]
+
+    async def _format_tool_response_with_llm(self, query: str, result) -> str:
+        """Format tool execution results using LLM for better presentation.
+        
+        Args:
+            query: Original user query
+            result: ExecutionResult from tool execution
+            
+        Returns:
+            LLM-formatted response string
+        """
+        if not result.success:
+            return "I encountered an error while processing your request. Please try again or rephrase your query."
+
+        if not result.results:
+            return "I couldn't find any results for your query. Please try a different search term."
+
+        # Extract sources for formatting
+        sources = self._extract_sources(result)
+        
+        # Get execution plan if available
+        execution_plan = getattr(result, 'execution_plan', None)
+        
+        # Use the result formatter
+        formatted_response = await self.result_formatter.format_search_results(
+            query=query,
+            sources=sources,
+            execution_plan=execution_plan
+        )
+        
+        return formatted_response
 
     def _format_tool_response(self, result) -> str:
         """Format tool execution results into a readable response.
@@ -351,14 +457,21 @@ class OrchestratorAgent:
         """
         sources = []
         for step_id, step_result in result.results.items():
-            if hasattr(step_result, "metadata") and step_result.metadata:
-                sources.append(
-                    {
-                        "step_id": step_id,
-                        "tool_name": step_result.metadata.get(
-                            "tool_name", step_result.metadata.get("tool", "unknown")
-                        ),
-                        "execution_time": step_result.metadata.get("execution_time", 0),
-                    }
-                )
+            source = {
+                "step_id": step_id,
+                "tool_name": getattr(step_result, "tool_name", "unknown"),
+                "execution_time": getattr(step_result, "execution_time", 0),
+            }
+            
+            # Extract the actual data from the step result
+            if hasattr(step_result, "data") and step_result.data:
+                source["type"] = "search_result"
+                source["publications"] = step_result.data
+            elif hasattr(step_result, "result") and step_result.result:
+                source["type"] = "search_result"
+                source["publications"] = step_result.result
+            else:
+                source["type"] = "metadata_only"
+                
+            sources.append(source)
         return sources

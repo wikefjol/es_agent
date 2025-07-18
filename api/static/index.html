@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ES Agent - Demo Interface</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ES Agent - Academic Research Assistant</h1>
+            <p>A conversational agent for academic research queries</p>
+        </header>
+
+        <main>
+            <div class="chat-container">
+                <div id="chat-messages" class="chat-messages">
+                    <div class="message system-message">
+                        <div class="message-content">
+                            <strong>System:</strong> Welcome to ES Agent! I can help you search for academic publications, analyze research trends, and answer questions about scholarly work. Try asking me something like "Find publications about machine learning" or "What are the top research topics in 2023?"
+                        </div>
+                    </div>
+                </div>
+
+                <div class="progress-container" id="progress-container" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <div class="progress-text" id="progress-text">Processing...</div>
+                </div>
+
+                <div class="input-container">
+                    <div class="input-group">
+                        <input type="text" id="query-input" placeholder="Ask me about academic research..." autocomplete="off">
+                        <button id="send-button">Send</button>
+                        <button id="cancel-button" style="display: none;">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="panel">
+                    <h3>Connection Status</h3>
+                    <div id="connection-status" class="status-disconnected">Disconnected</div>
+                </div>
+
+                <div class="panel">
+                    <h3>Session Info</h3>
+                    <div class="session-info">
+                        <p><strong>Session ID:</strong> <span id="session-id">Not connected</span></p>
+                        <p><strong>Queries:</strong> <span id="query-count">0</span></p>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3>Example Queries</h3>
+                    <div class="example-queries">
+                        <button class="example-btn" data-query="Find publications by John Smith">Find publications by John Smith</button>
+                        <button class="example-btn" data-query="What are the top research topics in 2023?">What are the top research topics in 2023?</button>
+                        <button class="example-btn" data-query="Show me machine learning papers with fuzzy author matching">Show me machine learning papers</button>
+                        <button class="example-btn" data-query="How many journal articles has Sarah Johnson written?">How many journal articles has Sarah Johnson written?</button>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3>Actions</h3>
+                    <div class="actions">
+                        <button id="clear-chat">Clear Chat</button>
+                        <button id="download-conversation">Download Conversation</button>
+                        <button id="reconnect">Reconnect</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>ES Agent Demo Interface - Phase 5: API and Production Infrastructure</p>
+        </footer>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>

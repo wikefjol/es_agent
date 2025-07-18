@@ -2,8 +2,10 @@
 
 import re
 import uuid
+import asyncio
 from typing import List, Dict, Any, Optional
 from src.tools.base import BaseTool, ToolResult
+from src.utils.llm_query_parser import LLMQueryParser, QueryIntent
 from src.models.schemas import (
     ExecutionPlan,
     PlanStep,
@@ -23,6 +25,7 @@ class PlanningAgent:
         Args:
             config: Configuration object (optional)
         """
+        self.query_parser = LLMQueryParser()
         self._query_patterns = {
             "author_search": [
                 r"publications?\s+by\s+([A-Za-z\s]+)",
@@ -53,7 +56,7 @@ class PlanningAgent:
             ],
         }
 
-    def create_plan(
+    async def create_plan(
         self, query: str, available_tools: List[BaseTool], context: Optional[Any] = None
     ) -> ExecutionPlan:
         """Create an execution plan for the given query.
@@ -75,7 +78,7 @@ class PlanningAgent:
             )
 
         # Parse query to understand intent
-        query_analysis = self._analyze_query(query, context)
+        query_analysis = await self._analyze_query(query, context)
 
         # Create steps based on analysis
         steps = self._create_steps(query_analysis, available_tools)
@@ -189,24 +192,50 @@ class PlanningAgent:
             },
         )
 
-    def _analyze_query(self, query: str, context: Optional[Any]) -> Dict[str, Any]:
+    async def _analyze_query(self, query: str, context: Optional[Any]) -> Dict[str, Any]:
         """Analyze the query to understand intent and extract parameters."""
-        query_lower = query.lower()
+        # Use the enhanced query parser
+        parsed = await self.query_parser.parse(query)
+        
         analysis = {
             "intent": "search",
             "parameters": {},
             "ambiguous": False,
             "conditional": False,
             "query": query,
+            "parsed": parsed,
         }
-
-        # Check for author search
-        for pattern in self._query_patterns["author_search"]:
-            match = re.search(pattern, query_lower)
-            if match:
-                analysis["intent"] = "author_search"
-                analysis["parameters"]["author"] = match.group(1).strip()
-                break
+        
+        # Map QueryIntent to planning intent
+        if parsed["intent"] == QueryIntent.AUTHOR_SEARCH:
+            analysis["intent"] = "author_search"
+            if parsed["entities"]["authors"]:
+                analysis["parameters"]["author"] = parsed["entities"]["authors"][0]
+        elif parsed["intent"] == QueryIntent.COUNT:
+            analysis["intent"] = "count"
+            if parsed["entities"]["authors"]:
+                analysis["parameters"]["author"] = parsed["entities"]["authors"][0]
+        elif parsed["intent"] == QueryIntent.TOPIC_SEARCH:
+            analysis["intent"] = "topic_search"
+            if parsed["entities"]["topics"]:
+                analysis["parameters"]["topic"] = parsed["entities"]["topics"][0]
+            elif parsed["entities"]["keywords"]:
+                analysis["parameters"]["topic"] = " ".join(parsed["entities"]["keywords"])
+        
+        # Add year filtering if years were extracted
+        if parsed["entities"]["years"]:
+            analysis["parameters"]["years"] = parsed["entities"]["years"]
+            
+        # Use fallback to original pattern matching if parser didn't find anything
+        query_lower = query.lower()
+        if not analysis["parameters"] and analysis["intent"] == "search":
+            # Check for author search
+            for pattern in self._query_patterns["author_search"]:
+                match = re.search(pattern, query_lower)
+                if match:
+                    analysis["intent"] = "author_search"
+                    analysis["parameters"]["author"] = match.group(1).strip()
+                    break
 
         # Check for topic search
         if analysis["intent"] == "search":

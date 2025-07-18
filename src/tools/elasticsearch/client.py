@@ -169,3 +169,18 @@ def get_es_client() -> Elasticsearch:
 def get_es_manager() -> ElasticsearchClientManager:
     """Get the Elasticsearch manager instance."""
     return ElasticsearchClientManager()
+
+
+class ElasticsearchClient:
+    """Wrapper class for Elasticsearch client to provide async interface."""
+    
+    def __init__(self):
+        self.manager = get_es_manager()
+    
+    async def health_check(self) -> dict:
+        """Async health check wrapper."""
+        return self.manager.health_check()
+    
+    def close(self):
+        """Close the client connection."""
+        self.manager.close()

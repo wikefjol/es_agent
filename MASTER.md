@@ -72,6 +72,24 @@ es_agent/
 │   └── utils/
 │       ├── __init__.py
 │       └── llm_factory.py
+├── api/                        # NEW: Phase 5 API Layer
+│   ├── __init__.py
+│   ├── main.py                 # FastAPI application
+│   ├── routes/
+│   │   ├── __init__.py
+│   │   ├── chat.py            # Chat endpoints
+│   │   ├── health.py          # Health check endpoints
+│   │   └── debug.py           # Debug endpoints
+│   ├── websocket.py           # WebSocket handlers
+│   ├── middleware.py          # CORS, logging middleware
+│   └── static/                # Demo interface files
+│       ├── index.html
+│       ├── style.css
+│       └── app.js
+├── scripts/                   # NEW: Deployment scripts
+│   ├── run_demo.py           # Local demo server
+│   ├── run_server.py         # Production server
+│   └── deploy.py             # University deployment
 ├── tests/
 │   ├── __init__.py
 │   ├── conftest.py
@@ -81,8 +99,12 @@ es_agent/
 │   │   ├── test_executor.py
 │   │   ├── test_context_manager.py
 │   │   └── test_tool_registry.py
-│   └── integration/
-│       └── test_integration.py
+│   ├── integration/
+│   │   └── test_integration.py
+│   └── api/                  # NEW: API tests
+│       ├── test_routes.py
+│       ├── test_websocket.py
+│       └── test_integration_api.py
 ├── .env.example
 ├── .gitignore
 ├── README.md
@@ -537,6 +559,34 @@ Requirements:
 6. Health checks and monitoring
 7. Load testing and scalability validation
 
+## Phase 5: Development & Deployment Strategy
+
+### Target Environment
+- **Scale**: <100 users, typically <10 concurrent
+- **Deployment**: University subdomain integration
+- **Use Case**: Academic demo/workspace for colleagues
+- **Development**: Local demo → test → integrate → deploy workflow
+
+### Local Demo Mode
+- Standalone FastAPI server for local testing
+- `python run_demo.py` command for quick development
+- Built-in simple HTML interface for testing
+- No external dependencies (Redis optional for basic mode)
+- Immediate feedback for development and debugging
+
+### Integration Mode  
+- CORS-enabled API for web app integration
+- Static file serving capability
+- Compatible with existing university web app collection
+- Environment-based configuration (local vs. production)
+- Easy injection into existing web application architecture
+
+### University Server Deployment
+- Integration with existing web app collection
+- Simple deployment scripts for university infrastructure
+- Configured for academic use case (<100 users)
+- Subdomain hosting compatible with current setup
+
 ## Key Improvements to Make (Phase 4 - Elasticsearch Tools):
 
 1. **All tools should be async**
@@ -566,6 +616,60 @@ Requirements:
 - Session timeout: 2 hours
 - Include WebSocket support for real-time updates
 
+## Real-time User Experience Requirements
+
+### Critical UX Challenge
+Multi-tool execution can take 5-15 seconds. Users need continuous feedback to understand the system is working and what it's doing.
+
+### WebSocket Progress Updates
+**Required Progress Messages**:
+1. **"Planning your query..."** - Initial query analysis
+2. **"Searching 356K publications..."** - Database search in progress  
+3. **"Found 45 papers, analyzing authors..."** - Processing results
+4. **"Generating summary..."** - Final response generation
+5. **"Complete!"** - Ready to display results
+
+### Progress Update Format
+```python
+# WebSocket message structure
+{
+  "type": "progress",
+  "message": "Searching publications...",
+  "step": 1,
+  "total_steps": 3,
+  "estimated_time": "2-5 seconds",
+  "details": {
+    "current_tool": "search_publications",
+    "parameters": {"query": "machine learning", "limit": 10}
+  }
+}
+
+# Final result message
+{
+  "type": "result",
+  "data": {
+    "response": "Found 45 publications...",
+    "sources": [...],
+    "execution_plan": {...}
+  }
+}
+
+# Error message
+{
+  "type": "error", 
+  "message": "Elasticsearch connection failed",
+  "recoverable": true,
+  "retry_in": 5
+}
+```
+
+### User Feedback Requirements
+- **Progress indication**: Show current step (1/3, 2/3, etc.)
+- **Time estimates**: Rough completion time when possible
+- **Tool transparency**: Let users see which tools are being used
+- **Error recovery**: Clear messages when things go wrong
+- **Cancellation**: Allow users to cancel long-running queries
+
 ## API Specifications (Phase 5)
 
 **Main Endpoint**:
@@ -585,6 +689,89 @@ Response:
     "confidence": float,
     "session_id": str
 }
+```
+
+## Integration Architecture
+
+### Development Workflow
+```bash
+# 1. Local Development & Testing
+python run_demo.py --port 8000 --demo-mode
+# Access at: http://localhost:8000 (built-in test interface)
+
+# 2. Integration Testing  
+python run_server.py --port 8000 --cors-origins "*"
+# Test with existing web app frontend
+
+# 3. University Deployment
+python run_server.py --port 8000 --cors-origins "https://your-domain.se"
+# Deploy to university subdomain
+```
+
+### Web App Integration Strategy
+```javascript
+// Frontend integration example
+const ws = new WebSocket('ws://localhost:8000/ws');
+
+// Send query
+ws.send(JSON.stringify({
+  type: 'query',
+  data: {
+    query: 'Find papers by John Smith',
+    session_id: 'user123'
+  }
+}));
+
+// Receive progress updates
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  
+  if (message.type === 'progress') {
+    showProgress(message.message, message.step, message.total_steps);
+  } else if (message.type === 'result') {
+    showResult(message.data);
+  } else if (message.type === 'error') {
+    showError(message.message, message.recoverable);
+  }
+};
+```
+
+### CORS Configuration
+```python
+# Development: Allow all origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Production: Restrict to university domain
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://your-domain.se"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
+```
+
+### Debug and Development Features
+```python
+# Debug endpoint for conversation download
+GET /api/debug/conversation/{session_id}
+Response: {
+    "conversation": [...],
+    "execution_plans": [...],
+    "tool_calls": [...],
+    "performance_metrics": {...}
+}
+
+# Health check endpoints
+GET /health          # Simple health check
+GET /health/detailed # Include ES connection, LLM availability
+GET /metrics         # Prometheus-style metrics
 ```
 
 ## Error Handling Requirements
@@ -667,9 +854,11 @@ elasticsearch>=7.0.0,<8.0.0  # Compatible with ES 6.8.23
 redis==5.0.0
 sentence-transformers==2.2.0
 
-# API
+# API (Phase 5)
 fastapi==0.100.0
 uvicorn==0.23.0
+websockets==11.0.0
+python-multipart==0.0.6
 
 # Testing
 pytest==7.4.0
@@ -865,11 +1054,92 @@ async def safe_llm_call(llm: ChatLiteLLM, messages: List[Dict]) -> str:
 ```
 
 ## Success Criteria
-1. All tests pass (>90% coverage)
-2. System handles example query successfully
-3. Follows conversation context appropriately
-4. Gracefully handles errors
-5. Performs within specified limits
+
+### Phase 1-4 (Completed)
+1. All tests pass (>90% coverage) ✅
+2. System handles example query successfully ✅
+3. Follows conversation context appropriately ✅
+4. Gracefully handles errors ✅
+5. Performs within specified limits ✅
+
+### Phase 5: API and Production Infrastructure ✅
+1. **Local Demo Server**: `python run_demo.py` works with built-in interface ✅
+2. **Real-time Progress**: WebSocket updates during multi-tool execution ✅
+3. **University Integration**: Easy integration with existing web app collection ✅
+4. **Performance**: <10s response time for typical queries, 95%+ uptime ✅
+5. **User Experience**: Progress feedback, error recovery, cancellation support ⚠️
+6. **Debug Capabilities**: Conversation download, execution plan inspection ✅
+7. **Deployment**: Simple deployment to university subdomain ✅
+
+### Phase 6: Production Quality & User Experience (NEW)
+1. **Response Quality Enhancement**:
+   - Rich publication summaries with abstracts and key findings
+   - Proper source attribution with DOIs and publication details
+   - Contextual responses that explain what was found and why it's relevant
+   - Follow-up question suggestions based on results
+
+2. **User Experience Improvements**:
+   - Progress indicators showing "Searching 356K publications..."
+   - Tool transparency: "Using Elasticsearch to search academic database..."
+   - Error messages with suggested alternatives
+   - Result export functionality (PDF, CSV, BibTeX)
+   - Session history and conversation download
+
+3. **Production Infrastructure**:
+   - Redis session persistence across browser refreshes
+   - Comprehensive error handling with user-friendly messages
+   - Health monitoring and alerting
+   - Load balancing and horizontal scaling
+   - Automated deployment pipelines
+   - Backup and disaster recovery procedures
+
+4. **Enterprise Features**:
+   - User authentication and authorization
+   - Usage analytics and rate limiting
+   - Configuration management via environment variables
+   - Logging and audit trails
+   - Security scanning and vulnerability management
+
+### Technical Success Metrics
+- **API Response Time**: REST endpoints <2s, WebSocket updates <500ms
+- **Reliability**: 95%+ uptime for colleague usage
+- **Scalability**: Handle <10 concurrent users smoothly
+- **Error Handling**: Graceful degradation with user-friendly messages
+- **Integration**: CORS working, static files served correctly
+
+### User Experience Success Metrics
+- **Feedback**: Users see progress during 5-15 second executions
+- **Transparency**: Users understand what tools are being used
+- **Debugging**: Developers can inspect conversation history
+- **Deployment**: Single command deployment to university server
+- **Adoption**: Colleagues actually use the system regularly
+
+### Phase 6 Success Criteria
+1. **Response Quality**:
+   - Users receive rich, contextual responses instead of generic "Found 10 publications"
+   - All sources properly attributed with DOI, title, authors, and publication year
+   - Responses include relevant abstracts and key findings
+   - Follow-up questions suggested based on search results
+
+2. **User Experience**:
+   - Progress indicators show specific actions: "Searching 356K publications...", "Analyzing results..."
+   - Tool transparency: Users know when ES is being used vs. conversational responses
+   - Error messages include suggested alternatives and recovery options
+   - Results can be exported in standard academic formats (BibTeX, CSV, PDF)
+
+3. **Production Readiness**:
+   - 99.9% uptime with proper error handling and recovery
+   - Sessions persist across browser refreshes
+   - Handles 100+ concurrent users without degradation
+   - Comprehensive logging and monitoring in place
+   - Automated deployment and rollback procedures
+
+4. **Enterprise Quality**:
+   - User authentication and role-based access control
+   - Usage analytics and reporting dashboard
+   - Rate limiting and abuse prevention
+   - Security audit compliance
+   - Configuration management without code changes
 
 ## Reference Implementation Notes
 
