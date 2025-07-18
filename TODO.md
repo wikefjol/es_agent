@@ -2,44 +2,45 @@
 
 ## Current Status (2025-07-17)
 
-### ✅ Completed - Phase 4 Elasticsearch Tools
+### ✅ Completed - Phase 4 Real Tool Integration
 
-1. **Elasticsearch Integration**
-   - ✅ Created base Elasticsearch tool infrastructure (`ElasticsearchBaseTool`)
-   - ✅ Implemented connection management with singleton pattern (`ElasticsearchClientManager`)
-   - ✅ Built first tool: `search_publications` with full async support
-   - ✅ Migrated to Pydantic V2 (field_validator, ConfigDict)
-   - ✅ Updated to elasticsearch-py 7.13.x (compatible with ES 6.8.23 server)
-   - ✅ Fixed authentication issues (using `http_auth` instead of `basic_auth`)
-   - ✅ All 34 unit tests passing
-   - ✅ Proper error handling and retry logic implemented
-   - ✅ LangChain @tool decorator integration working
+1. **Real Elasticsearch Tool Integration**
+   - ✅ Created comprehensive integration tests (`test_real_tools_integration.py`)
+   - ✅ Fixed Persons field issue (changed from nested query to simple match)
+   - ✅ Validated full workflow: Orchestrator → Planner → Executor → Real Tools
+   - ✅ All 13 integration tests passing with real Elasticsearch connection
+   - ✅ User-friendly testing script created and validated
+   - ✅ Real tool integration working end-to-end
 
-2. **Known Issues Resolved**
-   - ✅ Fixed numpy 2.0 compatibility by pinning numpy<2.0
-   - ✅ Fixed singleton testing issues with reset() method
-   - ✅ Fixed ES authentication for full URL hosts
-   - ✅ Fixed Pydantic V1 → V2 migration
+2. **Integration Testing Achievements**
+   - ✅ Created 10 basic integration tests covering all aspects
+   - ✅ Created 3 end-to-end workflow tests
+   - ✅ Fixed planner to use `search_publications` for author searches
+   - ✅ Fixed metadata structure to include `tool_name` in tool results
+   - ✅ Fixed test assertions to work with PlanStep objects
+   - ✅ Validated real Elasticsearch connection working
 
 3. **Current Working State**
-   - Tests: 34 passed, 2 skipped (integration tests)
-   - Connection to real ES cluster: Working (verified with debug scripts)
-   - Tool can be used with LangChain orchestrator
+   - Tests: All integration tests passing with real ES connection
+   - Real tool integration: ✅ Working
+   - User queries: ✅ Can process natural language and use real tools
+   - Agent system: ✅ Orchestrator → Planner → Executor → Real Tools flow working
 
 ## 🚧 TODO - Remaining Phase 4 Tasks
 
 ### Immediate Next Steps (Continue Phase 4)
 
-1. **Test Real ES Connection**
-   ```bash
-   python example_tool_use.py  # Should now work with real credentials
-   ```
+1. **LLM Integration for Natural Language Understanding**
+   - [ ] Integrate LLM Factory into Orchestrator for query analysis
+   - [ ] Add LLM-based query intent extraction
+   - [ ] Implement natural language to tool parameter conversion
+   - [ ] Test user queries like "Find papers by John Smith" with LLM understanding
 
 2. **Create Additional ES Tools** (Following same pattern as search_publications)
-   - [ ] `get_author_metrics` - Aggregate publication data by author
-   - [ ] `analyze_research_topics` - Extract and analyze keywords/topics
    - [ ] `search_persons` - Search the persons index
    - [ ] `search_organizations` - Search organizations
+   - [ ] `get_author_metrics` - Aggregate publication data by author
+   - [ ] `analyze_research_topics` - Extract and analyze keywords/topics
    - [ ] `find_collaborations` - Network analysis tool
    - [ ] `cross_reference_identifiers` - Look up by DOI, ORCID, etc.
 
@@ -47,11 +48,6 @@
    - [ ] Add caching layer for repeated queries
    - [ ] Implement batch operations for multiple document fetches
    - [ ] Add query explanation tool for debugging
-
-4. **Integration with Orchestrator**
-   - [ ] Register ES tools with the ToolRegistry
-   - [ ] Test tools work with orchestrator from earlier phases
-   - [ ] Verify async execution in planning/execution pipeline
 
 ## 📋 Project Phase Status (from MASTER.md)
 
@@ -72,9 +68,10 @@
 
 ### 🚧 Phase 4: Real Tools and LLM Integration (In Progress)
 - ✅ First ES tool (search_publications) 
+- ✅ Real tool integration with orchestrator
+- ✅ Integration testing with real Elasticsearch
+- ⏳ LLM Factory integration for natural language understanding
 - ⏳ Additional ES tools (see list above)
-- ⏳ LLM Factory with LiteLLM integration
-- ⏳ Integration testing with real LLM
 - ⏳ Web search tool
 
 ### ⏸️ Phase 5: API and Production Infrastructure (Not Started)
@@ -103,7 +100,14 @@
 
 ## 🚀 Next Session Starting Points
 
-1. **Option A: Continue ES Tools**
+1. **Option A: LLM Integration (Recommended)**
+   ```bash
+   # Integrate LLM Factory into orchestrator for natural language understanding
+   # Update orchestrator.py to use LLM for query analysis
+   # Test with natural language queries
+   ```
+
+2. **Option B: Continue ES Tools**
    ```bash
    # Create next tool following the pattern
    cp src/tools/elasticsearch/publications.py src/tools/elasticsearch/persons.py
@@ -111,21 +115,16 @@
    # Then modify for persons index
    ```
 
-2. **Option B: Test Integration**
+3. **Option C: Test Natural Language Integration**
    ```bash
-   # Test the search_publications tool with orchestrator
-   python -c "from src.core.orchestrator import OrchestratorAgent; ..."
-   ```
-
-3. **Option C: Start LLM Integration**
-   ```bash
-   # Implement LLM Factory
-   touch src/utils/llm_factory.py
-   touch tests/unit/test_llm_factory.py
+   # Test the current system with natural language queries
+   # Verify LLM integration works for query understanding
    ```
 
 ## 📝 Notes for Next Developer
 
+- Real tool integration is working! The agent can process queries and use real Elasticsearch tools
+- LLM infrastructure exists but isn't integrated into the orchestrator yet
 - All ES tools should follow the pattern established in `publications.py`
 - Use `http_auth` not `basic_auth` for ES authentication
 - Remember to update `__init__.py` when adding new tools
@@ -135,12 +134,14 @@
 ## 🔑 Key Files to Review
 
 - `src/tools/elasticsearch/publications.py` - Pattern for all ES tools
-- `tests/unit/tools/elasticsearch/test_search_publications.py` - Test pattern
+- `tests/integration/test_real_tools_integration.py` - Real tool integration tests
+- `src/utils/llm_factory.py` - LLM infrastructure (needs integration)
+- `src/core/orchestrator.py` - Needs LLM integration for natural language
 - `MASTER.md` - Overall project specification
 - `tests/fixtures/realistic_data.py` - Test data for integration tests
 
 ---
 
-**Last Updated**: 2025-07-17 17:04
-**Current Phase**: 4 - Real Tools and LLM Integration (Elasticsearch tools)
-**Next Milestone**: Complete all ES tools and integrate with orchestrator
+**Last Updated**: 2025-07-17 17:30
+**Current Phase**: 4 - Real Tools and LLM Integration (Real tools working, LLM integration needed)
+**Next Milestone**: Integrate LLM for natural language understanding

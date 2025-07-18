@@ -269,6 +269,17 @@ class PlanningAgent:
                     },
                 )
                 steps.append(step)
+            elif "search_publications" in tool_map:
+                # Use search_publications for author search if search_by_author is not available
+                step = PlanStep(
+                    id=str(uuid.uuid4()),
+                    tool_name="search_publications",
+                    parameters={
+                        "author_name": query_analysis["parameters"].get("author", ""),
+                        "limit": 10,
+                    },
+                )
+                steps.append(step)
 
         elif query_analysis["intent"] == "topic_search":
             if "search_publications" in tool_map:

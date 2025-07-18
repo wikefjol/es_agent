@@ -94,18 +94,13 @@ class SearchPublicationsTool(ElasticsearchBaseTool):
                 }
             })
         
-        # Author search (nested query)
+        # Author search (simple match on list of objects)
         if params.author_name:
             must_clauses.append({
-                "nested": {
-                    "path": "Persons",
-                    "query": {
-                        "match": {
-                            "Persons.PersonData.DisplayName": {
-                                "query": params.author_name,
-                                "operator": "and"
-                            }
-                        }
+                "match": {
+                    "Persons.PersonData.DisplayName": {
+                        "query": params.author_name,
+                        "operator": "and"
                     }
                 }
             })
@@ -234,6 +229,7 @@ class SearchPublicationsTool(ElasticsearchBaseTool):
                 total_hits = total_hits.get('value', 0)
             
             metadata = {
+                'tool_name': 'search_publications',
                 'total_results': total_hits,
                 'returned_results': len(publications),
                 'query_time_ms': response.get('took', 0),
