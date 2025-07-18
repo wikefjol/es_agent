@@ -82,7 +82,7 @@ class ToolRegistry:
             List of all registered tools
         """
         return list(self._tools.values())
-    
+
     def get_available_tools(self) -> List[BaseTool]:
         """Get all available tools (alias for get_all_tools).
 
@@ -104,7 +104,7 @@ class ToolRegistry:
             return []
 
         return [self._tools[tool_name] for tool_name in self._categories[category]]
-    
+
     def get_tools_by_category(self, category: str) -> List[BaseTool]:
         """Get tools by category (alias for find_tools_by_category).
 

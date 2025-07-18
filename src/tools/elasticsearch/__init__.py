@@ -6,30 +6,28 @@ from .base import (
     ElasticsearchBaseTool,
     ElasticsearchError,
     ElasticsearchQueryError,
-    ElasticsearchConnectionError
+    ElasticsearchConnectionError,
 )
 from .publications import (
-    search_publications_tool, 
+    search_publications_tool,
     SearchPublicationsTool,
     search_publications_impl,
-    PublicationSearchInput
+    PublicationSearchInput,
 )
 
 __all__ = [
     # Client utilities
-    'get_es_client',
-    'get_es_manager', 
-    'ElasticsearchConfig',
-    
+    "get_es_client",
+    "get_es_manager",
+    "ElasticsearchConfig",
     # Base classes and errors
-    'ElasticsearchBaseTool',
-    'ElasticsearchError',
-    'ElasticsearchQueryError',
-    'ElasticsearchConnectionError',
-    
+    "ElasticsearchBaseTool",
+    "ElasticsearchError",
+    "ElasticsearchQueryError",
+    "ElasticsearchConnectionError",
     # Tools
-    'search_publications_tool',
-    'SearchPublicationsTool',
-    'search_publications_impl',
-    'PublicationSearchInput',
+    "search_publications_tool",
+    "SearchPublicationsTool",
+    "search_publications_impl",
+    "PublicationSearchInput",
 ]

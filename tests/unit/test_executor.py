@@ -1,4 +1,5 @@
 """Tests for the Executor component."""
+
 # Test categories: unit, executor, async_execution
 
 import asyncio
@@ -105,7 +106,7 @@ class TestExecutor:
         assert result.steps_completed == 1
         assert result.steps_total == 1
         assert len(result.errors) == 0
-        
+
         # Verify step results contain expected data
         assert "step1" in result.results
         step_result = result.results["step1"]
@@ -142,7 +143,7 @@ class TestExecutor:
         assert result.steps_completed == 0
         assert result.steps_total == 1
         assert len(result.results) == 0
-        
+
         # Verify error details
         assert "step1" in result.errors
         error_message = result.errors["step1"].lower()
